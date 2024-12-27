@@ -1,6 +1,9 @@
 const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
 const bcrypt = require('bcrypt');
+require('dotenv').config();
+const jwtSecret = process.env.JWT_SECRET;
+const jwt = require('jsonwebtoken');
 
 const getLogin = asyncHandler(async (req, res) => {
   res.render('home');
@@ -8,11 +11,19 @@ const getLogin = asyncHandler(async (req, res) => {
 
 const loginUser = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
-  if (username === 'admin' && password === '1234') {
-    res.send('Login success');
-  } else {
-    res.send('login failed');
+  const user = await User.findOne({ username });
+  if(!user) {
+    return res.json( { message: 'Login failed' });
   }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if(!isMatch) {
+    return res.json( { message: 'Login failed' });
+  }
+
+  const token = jwt.sign({ id: user._id }, jwtSecret);
+  res.cookie('token', token, { httpOnly: true });
+  res.redirect('/contacts');
 });
 
 const getRegister = asyncHandler(async (req, res) => {
